@@ -1,0 +1,14 @@
+{
+  "name": "deriv-signals",
+  "version": "0.2.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "ws": "^8.13.0",
+    "sqlite3": "^5.1.6"
+  }
+}
