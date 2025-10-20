@@ -1,96 +1,346 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>Live Signals</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Signal Board — Manual (Stable)</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-  <style>.signal-badge{padding:.25rem .5rem;border-radius:.375rem}</style>
+  <style>
+    body { -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+    .pulse { animation: pulse 1s infinite; }
+    @keyframes pulse { 0%{transform:scale(1)}50%{transform:scale(1.02)}100%{transform:scale(1)}}
+    pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; }
+  </style>
 </head>
 <body class="bg-gray-100 text-gray-900">
-<div class="max-w-4xl mx-auto p-4">
-  <header class="flex items-center justify-between mb-4">
-    <div><h1 class="text-2xl font-bold">Live Signal Board</h1><p class="text-sm text-gray-600">Automatic signals (Deriv)</p></div>
-    <div id="conn" class="text-sm text-yellow-600">Connecting...</div>
-  </header>
-
-  <main class="bg-white rounded-lg shadow p-4">
-    <div class="flex justify-between items-center mb-4">
+  <div class="max-w-4xl mx-auto p-4">
+    <header class="flex items-center justify-between mb-6">
       <div>
-        <h2 class="text-lg font-semibold">Live Signal</h2>
-        <div id="liveSmall" class="text-sm text-gray-600">Waiting...</div>
+        <h1 class="text-2xl font-bold">Signal Board</h1>
+        <p class="text-sm text-gray-600">Manual signals • Over/Under • Even/Odd • Matches</p>
       </div>
-      <div id="liveCard" class="hidden p-3 rounded border bg-gray-50 text-right">
-        <div id="sigType" class="text-xs text-gray-600">TYPE</div>
-        <div id="sigMain" class="text-2xl font-bold mt-1">—</div>
-        <div id="sigMeta" class="text-sm text-gray-600 mt-1">—</div>
+      <div class="text-right">
+        <button id="openAdmin" class="px-3 py-1 bg-blue-600 text-white rounded shadow">Admin</button>
       </div>
-    </div>
+    </header>
 
-    <div>
-      <h3 class="font-medium">Recent Signals</h3>
-      <ul id="history" class="mt-2 space-y-2 max-h-64 overflow-auto"></ul>
+    <main class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <section class="md:col-span-2">
+        <div class="bg-white rounded-lg shadow p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-semibold">Live Signal</h2>
+            <div id="statusBadge" class="text-sm px-2 py-1 rounded bg-yellow-100 text-yellow-800">Manual</div>
+          </div>
+
+          <div id="liveWrap" class="p-6 rounded-lg border border-gray-200 bg-gradient-to-r from-white to-gray-50">
+            <div id="noSignal" class="text-gray-500">No signal published yet.</div>
+
+            <div id="signalCard" class="hidden">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div id="sigType" class="text-sm text-gray-600">TYPE</div>
+                  <div id="sigMain" class="text-3xl font-extrabold mt-1"></div>
+                  <div id="sigPrice" class="mt-1 text-sm text-gray-700"></div>
+                </div>
+                <div class="text-right">
+                  <div id="sigExpiry" class="text-sm text-gray-600">Expires in: —</div>
+                  <div id="sigConf" class="mt-2 text-sm font-medium rounded px-2 py-1 bg-green-100">—</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4">
+            <h3 class="text-sm font-medium text-gray-600">Recent Signals</h3>
+            <ul id="history" class="mt-2 space-y-2 max-h-64 overflow-auto"></ul>
+          </div>
+        </div>
+      </section>
+
+      <aside>
+        <div class="bg-white rounded-lg shadow p-4 space-y-3">
+          <div>
+            <h3 class="text-sm font-semibold">Controls</h3>
+            <div class="mt-2 text-xs text-gray-600">Pause feed (local) & Kill switch</div>
+            <div class="mt-3 flex space-x-2">
+              <button id="pauseBtn" class="flex-1 px-3 py-2 bg-blue-600 text-white rounded">Pause</button>
+              <button id="killBtn" class="flex-1 px-3 py-2 bg-red-500 text-white rounded">Kill</button>
+            </div>
+          </div>
+
+          <div>
+            <h3 class="text-sm font-semibold mt-2">Filters</h3>
+            <label class="block text-xs text-gray-600 mt-2">Min confidence</label>
+            <input id="minConf" type="range" min="0" max="100" value="0" class="w-full" />
+            <div class="text-xs text-gray-500 mt-1">Displayed threshold: <span id="minConfVal">0%</span></div>
+          </div>
+
+          <div>
+            <h3 class="text-sm font-semibold mt-2">Info</h3>
+            <div class="mt-2 text-xs text-gray-600">Use Admin to post signals locally. To make permanent for everyone, paste saved JSON into this file's initial-data block in GitHub and commit.</div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="mt-6 text-xs text-gray-500">Manual signal board. Edit file in GitHub to persist changes for all users.</footer>
+  </div>
+
+  <!-- Admin modal (client-side only) -->
+  <div id="adminModal" class="fixed inset-0 bg-black bg-opacity-40 hidden items-center justify-center px-4">
+    <div class="bg-white rounded-lg w-full max-w-2xl p-4 shadow-lg">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-semibold">Admin • Post / Edit Signals</h3>
+        <button id="closeAdmin" class="px-2 py-1 text-sm text-gray-600">Close</button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs text-gray-600">Type</label>
+          <input id="a_type" class="w-full p-2 border rounded" placeholder="over_under | even_odd | matches" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-600">Direction</label>
+          <input id="a_direction" class="w-full p-2 border rounded" placeholder="over | under | even | odd | match_teamA" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-600">Price (optional)</label>
+          <input id="a_price" class="w-full p-2 border rounded" placeholder="e.g. 12345.67" />
+        </div>
+        <div>
+          <label class="block text-xs text-gray-600">Expiry (s)</label>
+          <input id="a_expiry" class="w-full p-2 border rounded" value="60" />
+        </div>
+        <div class="md:col-span-2">
+          <label class="block text-xs text-gray-600">Confidence (0..1)</label>
+          <input id="a_conf" class="w-full p-2 border rounded" value="0.7" />
+        </div>
+
+        <div class="md:col-span-2 flex space-x-2">
+          <button id="postBtn" class="flex-1 px-3 py-2 bg-green-600 text-white rounded">Post Signal (temp)</button>
+          <button id="copyJson" class="flex-1 px-3 py-2 bg-indigo-600 text-white rounded">Copy JSON to Save</button>
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="block text-xs text-gray-600">Current embedded data (edit here to make permanent then paste into GitHub)</label>
+          <textarea id="dataArea" rows="6" class="w-full p-2 border rounded font-mono text-xs"></textarea>
+          <div class="text-xs text-gray-500 mt-1">After editing, copy JSON and paste into the &lt;script id="initial-data"&gt; block in this file on GitHub to persist globally.</div>
+        </div>
+      </div>
+
+      <div class="mt-3 text-right">
+        <button id="closeAdmin2" class="px-3 py-1 text-sm text-gray-600">Done</button>
+      </div>
     </div>
-  </main>
-</div>
+  </div>
+
+  <!-- safer embedded data block: code will ignore invalid JSON instead of breaking -->
+  <script id="initial-data" type="application/json">
+  [
+    {
+      "id":"sig_example_1",
+      "ts": 0,
+      "type":"over_under",
+      "direction":"over",
+      "price": null,
+      "expiry_seconds":60,
+      "confidence":0.75,
+      "note":"Example signal — edit this JSON in the file for permanent changes."
+    }
+  ]
+  </script>
 
 <script>
-  // If server serves this file, leave SERVER_URL empty to connect back to origin:
-  const SERVER_URL = ''; // if empty => will use same host; otherwise e.g. 'https://your-repl.repl.co'
-  const socket = SERVER_URL ? io(SERVER_URL) : io();
+(function(){
+  // lightweight passphrase (change in file if you want)
+  const ADMIN_PASS = 'changeme';
 
-  const connEl = document.getElementById('conn');
-  const liveCard = document.getElementById('liveCard');
-  const liveSmall = document.getElementById('liveSmall');
+  // DOM refs
+  const openAdmin = document.getElementById('openAdmin');
+  const adminModal = document.getElementById('adminModal');
+  const closeAdmin = document.getElementById('closeAdmin');
+  const closeAdmin2 = document.getElementById('closeAdmin2');
+  const postBtn = document.getElementById('postBtn');
+  const copyJson = document.getElementById('copyJson');
+  const dataArea = document.getElementById('dataArea');
+
+  const a_type = document.getElementById('a_type');
+  const a_direction = document.getElementById('a_direction');
+  const a_price = document.getElementById('a_price');
+  const a_expiry = document.getElementById('a_expiry');
+  const a_conf = document.getElementById('a_conf');
+
+  const noSignal = document.getElementById('noSignal');
+  const signalCard = document.getElementById('signalCard');
   const sigType = document.getElementById('sigType');
   const sigMain = document.getElementById('sigMain');
-  const sigMeta = document.getElementById('sigMeta');
+  const sigPrice = document.getElementById('sigPrice');
+  const sigExpiry = document.getElementById('sigExpiry');
+  const sigConf = document.getElementById('sigConf');
   const historyEl = document.getElementById('history');
+  const showCount = document.getElementById('showCount');
+  const minConf = document.getElementById('minConf');
+  const minConfVal = document.getElementById('minConfVal');
 
-  let history = [];
+  const pauseBtn = document.getElementById('pauseBtn');
+  const killBtn = document.getElementById('killBtn');
+  const statusBadge = document.getElementById('statusBadge');
 
-  socket.on('connect', ()=> {
-    connEl.textContent = 'Connected';
-    connEl.className = 'text-sm text-green-600';
-  });
-  socket.on('disconnect', ()=> {
-    connEl.textContent = 'Disconnected';
-    connEl.className = 'text-sm text-red-600';
-  });
-  socket.on('hello', d => console.log('hello', d));
-  socket.on('tick', t => {
-    // optional: show last price somewhere if needed
-    // console.log('tick', t);
-  });
-  socket.on('signal', s => {
-    console.log('signal', s);
-    history.unshift(s);
-    if (history.length > 100) history.pop();
-    render();
-  });
+  // state
+  let signals = [];
+  let paused = false;
+  let killed = false;
+  let minConfValNum = Number(minConf.value)/100;
 
-  function render() {
-    if (!history.length) {
-      liveSmall.textContent = 'No signal yet';
-      liveCard.classList.add('hidden');
-    } else {
-      const top = history[0];
-      liveSmall.textContent = `${top.type} • ${top.direction}`;
-      sigType.textContent = top.type.toUpperCase();
-      sigMain.textContent = top.direction.toUpperCase();
-      sigMeta.textContent = `Price: ${top.price} • ${Math.round((top.confidence||0)*100)}% • exp ${top.expiry_seconds}s`;
-      liveCard.classList.remove('hidden');
+  // load initial: try localStorage first, else parse embedded JSON safely
+  function loadInitial() {
+    try {
+      const local = localStorage.getItem('manual_signals_data_v1');
+      if (local) {
+        signals = JSON.parse(local);
+        return;
+      }
+    } catch(e){
+      console.warn('localStorage parse error', e);
     }
-
-    historyEl.innerHTML = '';
-    for (const s of history.slice(0,50)) {
-      const li = document.createElement('li');
-      li.className = 'flex items-center justify-between p-2 bg-gray-50 rounded';
-      li.innerHTML = `<div class="text-sm"><strong>${s.type.toUpperCase()}</strong> • ${s.direction.toUpperCase()}<div class="text-xs text-gray-600">${new Date(s.ts).toLocaleTimeString()}</div></div><div class="text-sm font-medium">${Math.round((s.confidence||0)*100)}%</div>`;
-      historyEl.appendChild(li);
+    try {
+      const raw = document.getElementById('initial-data').textContent.trim();
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) signals = parsed;
+      }
+    } catch(e) {
+      console.warn('embedded JSON invalid — ignored', e);
+      signals = [];
     }
   }
+
+  function saveLocal() {
+    try { localStorage.setItem('manual_signals_data_v1', JSON.stringify(signals)); } catch(e){}
+  }
+
+  function renderLive() {
+    if (!signals.length) {
+      noSignal.classList.remove('hidden');
+      signalCard.classList.add('hidden');
+      return;
+    }
+    const top = signals[0];
+    const conf100 = Math.round((top.confidence||0)*100);
+    if (conf100 < minConfValNum*100) {
+      noSignal.classList.remove('hidden');
+      signalCard.classList.add('hidden');
+    } else {
+      noSignal.classList.add('hidden');
+      signalCard.classList.remove('hidden');
+      sigType.textContent = (top.type||'').toUpperCase();
+      sigMain.textContent = (top.direction||'').toUpperCase();
+      sigPrice.textContent = top.price ? 'Price: ' + top.price : '';
+      sigExpiry.textContent = 'Expires in: ' + (top.expiry_seconds||'—') + 's';
+      sigConf.textContent = conf100 + '%';
+    }
+  }
+
+  function renderHistory() {
+    historyEl.innerHTML = '';
+    for (const s of signals.slice(0,200)) {
+      const li = document.createElement('li');
+      li.className = 'flex items-center justify-between p-2 bg-gray-50 rounded';
+      const left = document.createElement('div');
+      left.innerHTML = `<div class="text-sm font-medium">${s.type.toUpperCase()} • ${s.direction.toUpperCase()}</div>
+        <div class="text-xs text-gray-600">${new Date(s.ts).toLocaleString()} ${s.price ? '• Price: '+s.price : ''}${s.note ? ' • '+s.note : ''}</div>`;
+      const right = document.createElement('div');
+      right.className = 'text-sm font-medium';
+      right.textContent = Math.round((s.confidence||0)*100) + '%';
+      li.appendChild(left); li.appendChild(right);
+      historyEl.appendChild(li);
+    }
+    showCount && (showCount.textContent = signals.length);
+  }
+
+  function refreshAll() {
+    renderLive();
+    renderHistory();
+  }
+
+  // admin open
+  openAdmin.addEventListener('click', () => {
+    const p = prompt('Enter admin passphrase (set in index.html file). Leave blank to cancel.');
+    if (p === null) return;
+    if (p !== ADMIN_PASS) { alert('Wrong passphrase. Edit index.html to change the passphrase.'); return; }
+    dataArea.value = JSON.stringify(signals, null, 2);
+    adminModal.classList.remove('hidden');
+  });
+  closeAdmin.addEventListener('click', () => adminModal.classList.add('hidden'));
+  closeAdmin2.addEventListener('click', () => adminModal.classList.add('hidden'));
+
+  // post temporary signal
+  postBtn.addEventListener('click', () => {
+    const type = a_type.value.trim();
+    const direction = a_direction.value.trim();
+    const price = a_price.value.trim() || null;
+    const expiry = Number(a_expiry.value) || 60;
+    const conf = Math.max(0, Math.min(1, Number(a_conf.value) || 0));
+
+    if (!type || !direction) return alert('Type and direction required');
+
+    const sig = {
+      id: 'sig_' + Date.now(),
+      ts: Date.now(),
+      type,
+      direction,
+      price,
+      expiry_seconds: expiry,
+      confidence: conf
+    };
+    signals.unshift(sig);
+    saveLocal();
+    refreshAll();
+    alert('Signal posted locally. To make permanent for everyone: click "Copy JSON to Save" and paste into the "initial-data" block in index.html on GitHub.');
+    dataArea.value = JSON.stringify(signals, null, 2);
+  });
+
+  // copy JSON to clipboard
+  copyJson.addEventListener('click', async () => {
+    dataArea.value = JSON.stringify(signals, null, 2);
+    try {
+      await navigator.clipboard.writeText(dataArea.value);
+      alert('JSON copied to clipboard. Paste into the "initial-data" block in index.html on GitHub to save globally.');
+    } catch (e) {
+      alert('Copied to textarea. You can select & copy it manually.');
+    }
+  });
+
+  // pause/kill/min conf
+  pauseBtn.addEventListener('click', () => {
+    paused = !paused;
+    pauseBtn.textContent = paused ? 'Resume' : 'Pause';
+    pauseBtn.classList.toggle('opacity-60', paused);
+  });
+  killBtn.addEventListener('click', () => {
+    killed = !killed;
+    killBtn.textContent = killed ? 'Killed (off)' : 'Kill';
+    statusBadge.textContent = killed ? 'Killed' : 'Manual';
+    statusBadge.classList.toggle('bg-red-100', killed);
+    statusBadge.classList.toggle('text-red-800', killed);
+  });
+
+  minConf.addEventListener('input', () => {
+    minConfVal.textContent = minConf.value + '%';
+    minConfValNum = Number(minConf.value)/100;
+    refreshAll();
+  });
+
+  // init
+  loadInitial();
+  refreshAll();
+
+  // expose for debugging
+  window.manualSignals = {
+    get: () => signals,
+    set: arr => { signals = arr; saveLocal(); refreshAll(); }
+  };
+})();
 </script>
 </body>
 </html>
