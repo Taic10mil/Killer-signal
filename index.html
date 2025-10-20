@@ -1,345 +1,502 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Signal Board — Manual (Stable)</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <style>
-    body { -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
-    .pulse { animation: pulse 1s infinite; }
-    @keyframes pulse { 0%{transform:scale(1)}50%{transform:scale(1.02)}100%{transform:scale(1)}}
-    pre { white-space: pre-wrap; word-break: break-word; font-size: 12px; }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Signal Bot — Dark Dashboard</title>
+<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<script>/* small inline reset for dark */</script>
+<style>
+  :root{--bg:#0b1220;--card:#0f1724;--muted:#94a3b8;--accent:#10b981;--danger:#ef4444;--glass: rgba(255,255,255,0.03)}
+  body{background:linear-gradient(180deg,#06070a 0%,var(--bg) 100%);color:#e6eef8;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.03); box-shadow: 0 6px 18px rgba(2,6,23,0.6)}
+  .muted{color:var(--muted)}
+  .small{font-size:12px}
+  .pill{padding:6px 10px;border-radius:999px;background:var(--glass);font-weight:600}
+  .green{color:var(--accent)}
+  .red{color:var(--danger)}
+  pre{white-space:pre-wrap;word-break:break-word}
+  @media (max-width:720px){.grid-3{grid-template-columns:1fr}}
+</style>
 </head>
-<body class="bg-gray-100 text-gray-900">
-  <div class="max-w-4xl mx-auto p-4">
-    <header class="flex items-center justify-between mb-6">
-      <div>
-        <h1 class="text-2xl font-bold">Signal Board</h1>
-        <p class="text-sm text-gray-600">Manual signals • Over/Under • Even/Odd • Matches</p>
-      </div>
-      <div class="text-right">
-        <button id="openAdmin" class="px-3 py-1 bg-blue-600 text-white rounded shadow">Admin</button>
-      </div>
-    </header>
+<body>
+<div class="max-w-5xl mx-auto p-4">
+  <header class="flex items-start justify-between mb-4">
+    <div>
+      <h1 class="text-2xl font-bold">Signal Bot — Dashboard</h1>
+      <div class="muted small">Dark bot UI • Over/Under • Even/Odd • Matches</div>
+    </div>
+    <div class="flex items-center space-x-2">
+      <div id="status" class="pill small muted">Manual</div>
+      <button id="openAdmin" class="px-3 py-2 bg-blue-600 rounded shadow">Admin</button>
+    </div>
+  </header>
 
-    <main class="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <section class="md:col-span-2">
-        <div class="bg-white rounded-lg shadow p-4">
-          <div class="flex items-center justify-between mb-3">
-            <h2 class="text-lg font-semibold">Live Signal</h2>
-            <div id="statusBadge" class="text-sm px-2 py-1 rounded bg-yellow-100 text-yellow-800">Manual</div>
+  <main class="grid grid-cols-3 gap-4 grid-3">
+    <!-- Left: Live & Ticks -->
+    <section class="col-span-2">
+      <div class="card rounded-lg p-4 mb-4">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <div class="small muted">Market</div>
+            <div class="flex items-center space-x-2 mt-1">
+              <select id="marketSel" class="p-2 rounded bg-transparent border border-white/5">
+                <option>R_100</option>
+                <option>R_25</option>
+                <option>R_10</option>
+                <option>R_50</option>
+                <option>XAUUSD</option>
+              </select>
+              <div id="volatility" class="pill small muted">Volatility: —</div>
+              <div id="tickCount" class="pill small muted">Ticks: 0</div>
+            </div>
           </div>
+          <div class="text-right">
+            <div class="small muted">Last price</div>
+            <div id="lastPrice" class="text-xl font-semibold">—</div>
+            <div class="muted small">Updated live</div>
+          </div>
+        </div>
 
-          <div id="liveWrap" class="p-6 rounded-lg border border-gray-200 bg-gradient-to-r from-white to-gray-50">
-            <div id="noSignal" class="text-gray-500">No signal published yet.</div>
-
-            <div id="signalCard" class="hidden">
-              <div class="flex items-center justify-between">
-                <div>
-                  <div id="sigType" class="text-sm text-gray-600">TYPE</div>
-                  <div id="sigMain" class="text-3xl font-extrabold mt-1"></div>
-                  <div id="sigPrice" class="mt-1 text-sm text-gray-700"></div>
-                </div>
-                <div class="text-right">
-                  <div id="sigExpiry" class="text-sm text-gray-600">Expires in: —</div>
-                  <div id="sigConf" class="mt-2 text-sm font-medium rounded px-2 py-1 bg-green-100">—</div>
-                </div>
-              </div>
+        <div class="grid grid-cols-3 gap-3">
+          <!-- Ticks -->
+          <div class="col-span-2">
+            <div class="small muted mb-2">Recent ticks</div>
+            <div id="ticks" class="bg-black/20 rounded p-2 max-h-36 overflow-auto"></div>
+            <div class="flex items-center space-x-2 mt-2">
+              <button id="simulateTick" class="px-3 py-1 bg-green-600 rounded small">Simulate tick</button>
+              <button id="clearTicks" class="px-3 py-1 bg-red-600 rounded small">Clear ticks</button>
+              <div class="muted small">• You can paste real ticks in Admin</div>
             </div>
           </div>
 
-          <div class="mt-4">
-            <h3 class="text-sm font-medium text-gray-600">Recent Signals</h3>
-            <ul id="history" class="mt-2 space-y-2 max-h-64 overflow-auto"></ul>
-          </div>
-        </div>
-      </section>
-
-      <aside>
-        <div class="bg-white rounded-lg shadow p-4 space-y-3">
-          <div>
-            <h3 class="text-sm font-semibold">Controls</h3>
-            <div class="mt-2 text-xs text-gray-600">Pause feed (local) & Kill switch</div>
+          <!-- Prediction Card -->
+          <div class="card rounded p-3">
+            <div class="small muted">Live Prediction</div>
+            <div id="liveSigType" class="text-xs muted mt-1">—</div>
+            <div id="liveSigMain" class="text-3xl font-extrabold mt-2">—</div>
+            <div id="liveMeta" class="muted small mt-2">Confidence: — • Expires: —s</div>
             <div class="mt-3 flex space-x-2">
-              <button id="pauseBtn" class="flex-1 px-3 py-2 bg-blue-600 text-white rounded">Pause</button>
-              <button id="killBtn" class="flex-1 px-3 py-2 bg-red-500 text-white rounded">Kill</button>
+              <button id="markWin" class="flex-1 px-2 py-1 bg-blue-600 rounded small">Mark Win</button>
+              <button id="markLoss" class="flex-1 px-2 py-1 bg-gray-700 rounded small">Mark Loss</button>
             </div>
           </div>
-
-          <div>
-            <h3 class="text-sm font-semibold mt-2">Filters</h3>
-            <label class="block text-xs text-gray-600 mt-2">Min confidence</label>
-            <input id="minConf" type="range" min="0" max="100" value="0" class="w-full" />
-            <div class="text-xs text-gray-500 mt-1">Displayed threshold: <span id="minConfVal">0%</span></div>
-          </div>
-
-          <div>
-            <h3 class="text-sm font-semibold mt-2">Info</h3>
-            <div class="mt-2 text-xs text-gray-600">Use Admin to post signals locally. To make permanent for everyone, paste saved JSON into this file's initial-data block in GitHub and commit.</div>
-          </div>
-        </div>
-      </aside>
-    </main>
-
-    <footer class="mt-6 text-xs text-gray-500">Manual signal board. Edit file in GitHub to persist changes for all users.</footer>
-  </div>
-
-  <!-- Admin modal (client-side only) -->
-  <div id="adminModal" class="fixed inset-0 bg-black bg-opacity-40 hidden items-center justify-center px-4">
-    <div class="bg-white rounded-lg w-full max-w-2xl p-4 shadow-lg">
-      <div class="flex items-center justify-between mb-3">
-        <h3 class="text-lg font-semibold">Admin • Post / Edit Signals</h3>
-        <button id="closeAdmin" class="px-2 py-1 text-sm text-gray-600">Close</button>
-      </div>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label class="block text-xs text-gray-600">Type</label>
-          <input id="a_type" class="w-full p-2 border rounded" placeholder="over_under | even_odd | matches" />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-600">Direction</label>
-          <input id="a_direction" class="w-full p-2 border rounded" placeholder="over | under | even | odd | match_teamA" />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-600">Price (optional)</label>
-          <input id="a_price" class="w-full p-2 border rounded" placeholder="e.g. 12345.67" />
-        </div>
-        <div>
-          <label class="block text-xs text-gray-600">Expiry (s)</label>
-          <input id="a_expiry" class="w-full p-2 border rounded" value="60" />
-        </div>
-        <div class="md:col-span-2">
-          <label class="block text-xs text-gray-600">Confidence (0..1)</label>
-          <input id="a_conf" class="w-full p-2 border rounded" value="0.7" />
-        </div>
-
-        <div class="md:col-span-2 flex space-x-2">
-          <button id="postBtn" class="flex-1 px-3 py-2 bg-green-600 text-white rounded">Post Signal (temp)</button>
-          <button id="copyJson" class="flex-1 px-3 py-2 bg-indigo-600 text-white rounded">Copy JSON to Save</button>
-        </div>
-
-        <div class="md:col-span-2">
-          <label class="block text-xs text-gray-600">Current embedded data (edit here to make permanent then paste into GitHub)</label>
-          <textarea id="dataArea" rows="6" class="w-full p-2 border rounded font-mono text-xs"></textarea>
-          <div class="text-xs text-gray-500 mt-1">After editing, copy JSON and paste into the &lt;script id="initial-data"&gt; block in this file on GitHub to persist globally.</div>
         </div>
       </div>
 
-      <div class="mt-3 text-right">
-        <button id="closeAdmin2" class="px-3 py-1 text-sm text-gray-600">Done</button>
+      <!-- History / Stats -->
+      <div class="card rounded p-4">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <h3 class="font-semibold">Signals History</h3>
+            <div class="muted small">Recent posted signals and results</div>
+          </div>
+          <div class="text-right small muted">
+            <div>Win rate: <span id="winRate">—</span></div>
+            <div>Total: <span id="totalCount">0</span></div>
+          </div>
+        </div>
+        <ul id="history" class="space-y-2 max-h-56 overflow-auto"></ul>
+      </div>
+    </section>
+
+    <!-- Right: controls / quick -->
+    <aside>
+      <div class="card rounded p-4 mb-4">
+        <div class="small muted">Quick Controls</div>
+        <div class="mt-3 space-y-2">
+          <button id="pauseBtn" class="w-full px-3 py-2 bg-yellow-600 rounded">Pause</button>
+          <button id="killBtn" class="w-full px-3 py-2 bg-red-600 rounded">Kill</button>
+          <button id="newDemo" class="w-full px-3 py-2 bg-indigo-600 rounded">Post demo signal</button>
+        </div>
+      </div>
+
+      <div class="card rounded p-4">
+        <div class="small muted">Filters</div>
+        <label class="block mt-2 small muted">Min confidence</label>
+        <input id="minConf" type="range" min="0" max="100" value="0" class="w-full" />
+        <div class="mt-3 small muted">Status</div>
+        <div id="feedStatus" class="mt-1 pill small muted">Running</div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<!-- Admin modal -->
+<div id="adminModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center p-4">
+  <div class="bg-[#071025] rounded-lg w-full max-w-2xl p-4 card">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-lg font-semibold">Admin — Post / Import</h3>
+      <div class="flex items-center space-x-2">
+        <button id="closeAdmin" class="px-2 py-1 bg-gray-700 rounded">Close</button>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div>
+        <label class="small muted">Passphrase</label>
+        <input id="adminPass" class="w-full p-2 rounded bg-transparent border border-white/5" placeholder="passphrase" />
+      </div>
+
+      <div>
+        <label class="small muted">Market</label>
+        <select id="adminMarket" class="w-full p-2 rounded bg-transparent border border-white/5">
+          <option>R_100</option><option>R_25</option><option>R_10</option><option>R_50</option><option>XAUUSD</option>
+        </select>
+      </div>
+
+      <div>
+        <label class="small muted">Type</label>
+        <input id="adminType" class="w-full p-2 rounded bg-transparent border border-white/5" placeholder="over_under | even_odd | matches" />
+      </div>
+
+      <div>
+        <label class="small muted">Direction</label>
+        <input id="adminDir" class="w-full p-2 rounded bg-transparent border border-white/5" placeholder="over | under | even | odd | teamA" />
+      </div>
+
+      <div>
+        <label class="small muted">Price (opt)</label>
+        <input id="adminPrice" class="w-full p-2 rounded bg-transparent border border-white/5" placeholder="e.g. 12345.67" />
+      </div>
+
+      <div>
+        <label class="small muted">Confidence (0..1)</label>
+        <input id="adminConf" class="w-full p-2 rounded bg-transparent border border-white/5" value="0.7" />
+      </div>
+
+      <div>
+        <label class="small muted">Expiry seconds</label>
+        <input id="adminExpiry" class="w-full p-2 rounded bg-transparent border border-white/5" value="60" />
+      </div>
+
+      <div>
+        <label class="small muted">Note</label>
+        <input id="adminNote" class="w-full p-2 rounded bg-transparent border border-white/5" placeholder="optional note" />
+      </div>
+
+      <div class="md:col-span-2">
+        <button id="postSignal" class="w-full px-3 py-2 bg-green-600 rounded">Post Signal (temp)</button>
+      </div>
+
+      <div class="md:col-span-2">
+        <label class="small muted">Paste signals JSON (array) to import</label>
+        <textarea id="importArea" rows="6" class="w-full p-2 rounded bg-transparent border border-white/5 font-mono small" placeholder='[{"id":"sig_1",...}]'></textarea>
+        <div class="flex items-center space-x-2 mt-2">
+          <button id="importBtn" class="px-3 py-1 bg-indigo-600 rounded small">Import</button>
+          <button id="copyJson" class="px-3 py-1 bg-gray-700 rounded small">Copy JSON to Save</button>
+          <button id="clearAll" class="px-3 py-1 bg-red-600 rounded small">Clear All</button>
+        </div>
+        <div class="muted small mt-2">To persist for everyone: copy JSON and paste into the <code>&lt;script id="initial-data"&gt;</code> block in this file on GitHub then commit.</div>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- safer embedded data block: code will ignore invalid JSON instead of breaking -->
-  <script id="initial-data" type="application/json">
-  [
-    {
-      "id":"sig_example_1",
-      "ts": 0,
-      "type":"over_under",
-      "direction":"over",
-      "price": null,
-      "expiry_seconds":60,
-      "confidence":0.75,
-      "note":"Example signal — edit this JSON in the file for permanent changes."
-    }
-  ]
-  </script>
+<!-- Embedded initial data (safe parse) -->
+<script id="initial-data" type="application/json">
+[
+  {
+    "id":"sig_example_1",
+    "ts": 0,
+    "market":"R_100",
+    "type":"over_under",
+    "direction":"over",
+    "price": null,
+    "expiry_seconds":60,
+    "confidence":0.75,
+    "note":"Example signal — edit this JSON in repo to persist."
+  }
+]
+</script>
 
 <script>
 (function(){
-  // lightweight passphrase (change in file if you want)
+  // simple passphrase — change in file on GitHub to secure
   const ADMIN_PASS = 'changeme';
 
   // DOM refs
   const openAdmin = document.getElementById('openAdmin');
   const adminModal = document.getElementById('adminModal');
   const closeAdmin = document.getElementById('closeAdmin');
-  const closeAdmin2 = document.getElementById('closeAdmin2');
-  const postBtn = document.getElementById('postBtn');
+  const postSignal = document.getElementById('postSignal');
   const copyJson = document.getElementById('copyJson');
-  const dataArea = document.getElementById('dataArea');
+  const importBtn = document.getElementById('importBtn');
+  const clearAll = document.getElementById('clearAll');
 
-  const a_type = document.getElementById('a_type');
-  const a_direction = document.getElementById('a_direction');
-  const a_price = document.getElementById('a_price');
-  const a_expiry = document.getElementById('a_expiry');
-  const a_conf = document.getElementById('a_conf');
+  const adminPass = document.getElementById('adminPass');
+  const adminMarket = document.getElementById('adminMarket');
+  const adminType = document.getElementById('adminType');
+  const adminDir = document.getElementById('adminDir');
+  const adminPrice = document.getElementById('adminPrice');
+  const adminConf = document.getElementById('adminConf');
+  const adminExpiry = document.getElementById('adminExpiry');
+  const adminNote = document.getElementById('adminNote');
+  const importArea = document.getElementById('importArea');
 
-  const noSignal = document.getElementById('noSignal');
-  const signalCard = document.getElementById('signalCard');
-  const sigType = document.getElementById('sigType');
-  const sigMain = document.getElementById('sigMain');
-  const sigPrice = document.getElementById('sigPrice');
-  const sigExpiry = document.getElementById('sigExpiry');
-  const sigConf = document.getElementById('sigConf');
+  const marketSel = document.getElementById('marketSel');
+  const volatilityEl = document.getElementById('volatility');
+  const tickCountEl = document.getElementById('tickCount');
+  const ticksEl = document.getElementById('ticks');
+  const lastPriceEl = document.getElementById('lastPrice');
+
+  const liveSigType = document.getElementById('liveSigType');
+  const liveSigMain = document.getElementById('liveSigMain');
+  const liveMeta = document.getElementById('liveMeta');
+
   const historyEl = document.getElementById('history');
-  const showCount = document.getElementById('showCount');
-  const minConf = document.getElementById('minConf');
-  const minConfVal = document.getElementById('minConfVal');
+  const winRateEl = document.getElementById('winRate');
+  const totalCountEl = document.getElementById('totalCount');
+
+  const simulateTickBtn = document.getElementById('simulateTick');
+  const clearTicksBtn = document.getElementById('clearTicks');
 
   const pauseBtn = document.getElementById('pauseBtn');
   const killBtn = document.getElementById('killBtn');
-  const statusBadge = document.getElementById('statusBadge');
+  const newDemo = document.getElementById('newDemo');
+  const minConf = document.getElementById('minConf');
+  const feedStatus = document.getElementById('feedStatus');
+
+  const markWin = document.getElementById('markWin');
+  const markLoss = document.getElementById('markLoss');
 
   // state
   let signals = [];
+  let ticks = []; // {ts, price}
   let paused = false;
   let killed = false;
-  let minConfValNum = Number(minConf.value)/100;
+  let minConfVal = Number(minConf.value)/100;
+  const MAX_HISTORY = 200;
 
-  // load initial: try localStorage first, else parse embedded JSON safely
-  function loadInitial() {
+  // safe load initial data
+  function loadInitial(){
     try {
-      const local = localStorage.getItem('manual_signals_data_v1');
-      if (local) {
-        signals = JSON.parse(local);
-        return;
-      }
-    } catch(e){
-      console.warn('localStorage parse error', e);
-    }
+      const local = localStorage.getItem('signals_v2');
+      if (local) { signals = JSON.parse(local); return; }
+    } catch(e){}
     try {
       const raw = document.getElementById('initial-data').textContent.trim();
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed)) signals = parsed;
+      const parsed = JSON.parse(raw || '[]');
+      if (Array.isArray(parsed)) signals = parsed;
+    } catch(e){ signals = []; }
+  }
+
+  function saveLocal(){ try { localStorage.setItem('signals_v2', JSON.stringify(signals)); } catch(e){} }
+
+  // ticks helpers
+  function pushTick(price){
+    const t = { ts: Date.now(), price: Number(price) };
+    ticks.unshift(t);
+    if (ticks.length > 100) ticks.pop();
+    renderTicks();
+    computeVol();
+  }
+  function clearTicks(){ ticks = []; renderTicks(); computeVol(); }
+
+  function renderTicks(){
+    ticksEl.innerHTML = '';
+    for (const t of ticks.slice(0,50)){
+      const div = document.createElement('div');
+      div.className = 'flex items-center justify-between py-1 px-2';
+      div.innerHTML = `<div class="small muted">${new Date(t.ts).toLocaleTimeString()}</div><div>${t.price}</div>`;
+      ticksEl.appendChild(div);
+    }
+    tickCountEl.textContent = 'Ticks: ' + ticks.length;
+    lastPriceEl.textContent = ticks.length ? ticks[0].price : '—';
+  }
+
+  function computeVol(){
+    if (ticks.length < 2){ volatilityEl.textContent = 'Volatility: —'; return; }
+    const arr = ticks.map(t=>t.price).slice(0,30);
+    const n = arr.length;
+    const mean = arr.reduce((a,b)=>a+b,0)/n;
+    const variance = arr.reduce((a,b)=>a+(b-mean)*(b-mean),0)/n;
+    const sd = Math.sqrt(variance);
+    volatilityEl.textContent = 'Volatility: ' + sd.toFixed(4);
+  }
+
+  // render signals
+  function render(){
+    // live
+    if (signals.length && !paused && !killed){
+      const top = signals[0];
+      const conf100 = Math.round((top.confidence||0)*100);
+      if (conf100 >= (minConfVal*100)){
+        liveSigType.textContent = (top.type||'').toUpperCase();
+        liveSigMain.textContent = (top.direction||'').toUpperCase();
+        liveMeta.textContent = `Market: ${top.market || '—'} • ${conf100}% • exp ${top.expiry_seconds || 0}s`;
+      } else {
+        liveSigType.textContent = '—';
+        liveSigMain.textContent = '—';
+        liveMeta.textContent = 'Waiting for high-confidence';
       }
-    } catch(e) {
-      console.warn('embedded JSON invalid — ignored', e);
-      signals = [];
-    }
-  }
-
-  function saveLocal() {
-    try { localStorage.setItem('manual_signals_data_v1', JSON.stringify(signals)); } catch(e){}
-  }
-
-  function renderLive() {
-    if (!signals.length) {
-      noSignal.classList.remove('hidden');
-      signalCard.classList.add('hidden');
-      return;
-    }
-    const top = signals[0];
-    const conf100 = Math.round((top.confidence||0)*100);
-    if (conf100 < minConfValNum*100) {
-      noSignal.classList.remove('hidden');
-      signalCard.classList.add('hidden');
     } else {
-      noSignal.classList.add('hidden');
-      signalCard.classList.remove('hidden');
-      sigType.textContent = (top.type||'').toUpperCase();
-      sigMain.textContent = (top.direction||'').toUpperCase();
-      sigPrice.textContent = top.price ? 'Price: ' + top.price : '';
-      sigExpiry.textContent = 'Expires in: ' + (top.expiry_seconds||'—') + 's';
-      sigConf.textContent = conf100 + '%';
+      liveSigType.textContent = '—';
+      liveSigMain.textContent = '—';
+      liveMeta.textContent = 'No active signal';
     }
-  }
 
-  function renderHistory() {
+    // history
     historyEl.innerHTML = '';
-    for (const s of signals.slice(0,200)) {
+    for (const s of signals.slice(0,MAX_HISTORY)){
       const li = document.createElement('li');
-      li.className = 'flex items-center justify-between p-2 bg-gray-50 rounded';
+      li.className = 'flex items-center justify-between p-2 bg-black/20 rounded';
       const left = document.createElement('div');
-      left.innerHTML = `<div class="text-sm font-medium">${s.type.toUpperCase()} • ${s.direction.toUpperCase()}</div>
-        <div class="text-xs text-gray-600">${new Date(s.ts).toLocaleString()} ${s.price ? '• Price: '+s.price : ''}${s.note ? ' • '+s.note : ''}</div>`;
+      left.innerHTML = `<div class="text-sm font-semibold">${s.type.toUpperCase()} • ${s.direction.toUpperCase()}</div>
+        <div class="small muted">${s.market||'—'} • ${new Date(s.ts).toLocaleString()} ${s.note? ' • ' + s.note : ''}</div>`;
       const right = document.createElement('div');
-      right.className = 'text-sm font-medium';
-      right.textContent = Math.round((s.confidence||0)*100) + '%';
+      right.className = 'flex items-center space-x-2';
+      const conf = document.createElement('div'); conf.className='small muted'; conf.textContent = Math.round((s.confidence||0)*100)+'%';
+      const res = document.createElement('div'); res.className = 'small';
+      if (s.result === 'win') res.innerHTML = '<span class="green">WIN</span>';
+      else if (s.result === 'loss') res.innerHTML = '<span class="red">LOSS</span>';
+      else res.textContent = '—';
+      right.appendChild(conf); right.appendChild(res);
       li.appendChild(left); li.appendChild(right);
       historyEl.appendChild(li);
     }
-    showCount && (showCount.textContent = signals.length);
+
+    // stats
+    totalCountEl.textContent = signals.length;
+    const completed = signals.filter(s => s.result === 'win' || s.result === 'loss');
+    const wins = completed.filter(s => s.result === 'win').length;
+    const winRate = completed.length ? Math.round((wins/completed.length)*100) + '%' : '—';
+    winRateEl.textContent = winRate;
   }
 
-  function refreshAll() {
-    renderLive();
-    renderHistory();
+  // post a signal
+  function postSignalNow(obj){
+    signals.unshift(obj);
+    if (signals.length > MAX_HISTORY) signals.pop();
+    saveLocal();
+    render();
+    alert('Signal posted locally. To persist globally, use Copy JSON to Save and paste into file on GitHub.');
   }
 
-  // admin open
-  openAdmin.addEventListener('click', () => {
-    const p = prompt('Enter admin passphrase (set in index.html file). Leave blank to cancel.');
-    if (p === null) return;
-    if (p !== ADMIN_PASS) { alert('Wrong passphrase. Edit index.html to change the passphrase.'); return; }
-    dataArea.value = JSON.stringify(signals, null, 2);
+  // admin handlers
+  openAdmin.addEventListener('click', ()=>{
     adminModal.classList.remove('hidden');
+    adminPass.value = '';
   });
-  closeAdmin.addEventListener('click', () => adminModal.classList.add('hidden'));
-  closeAdmin2.addEventListener('click', () => adminModal.classList.add('hidden'));
+  closeAdmin.addEventListener('click', ()=> adminModal.classList.add('hidden'));
 
-  // post temporary signal
-  postBtn.addEventListener('click', () => {
-    const type = a_type.value.trim();
-    const direction = a_direction.value.trim();
-    const price = a_price.value.trim() || null;
-    const expiry = Number(a_expiry.value) || 60;
-    const conf = Math.max(0, Math.min(1, Number(a_conf.value) || 0));
-
-    if (!type || !direction) return alert('Type and direction required');
-
-    const sig = {
+  postSignal.addEventListener('click', ()=>{
+    if (adminPass.value.trim() !== ADMIN_PASS){ alert('Wrong passphrase'); return; }
+    const s = {
       id: 'sig_' + Date.now(),
       ts: Date.now(),
-      type,
-      direction,
-      price,
-      expiry_seconds: expiry,
-      confidence: conf
+      market: adminMarket.value || marketSel.value,
+      type: (adminType.value || 'over_under'),
+      direction: (adminDir.value || 'over'),
+      price: adminPrice.value ? Number(adminPrice.value) : null,
+      confidence: Math.max(0, Math.min(1, Number(adminConf.value) || 0)),
+      expiry_seconds: Number(adminExpiry.value) || 60,
+      note: adminNote.value || ''
     };
-    signals.unshift(sig);
-    saveLocal();
-    refreshAll();
-    alert('Signal posted locally. To make permanent for everyone: click "Copy JSON to Save" and paste into the "initial-data" block in index.html on GitHub.');
-    dataArea.value = JSON.stringify(signals, null, 2);
+    postSignalNow(s);
+    // update admin textarea
+    importArea.value = JSON.stringify(signals, null, 2);
   });
 
-  // copy JSON to clipboard
-  copyJson.addEventListener('click', async () => {
-    dataArea.value = JSON.stringify(signals, null, 2);
+  importBtn.addEventListener('click', ()=>{
+    if (adminPass.value.trim() !== ADMIN_PASS){ alert('Wrong passphrase'); return; }
+    const raw = importArea.value.trim();
+    if (!raw) return alert('Paste JSON array');
     try {
-      await navigator.clipboard.writeText(dataArea.value);
-      alert('JSON copied to clipboard. Paste into the "initial-data" block in index.html on GitHub to save globally.');
-    } catch (e) {
-      alert('Copied to textarea. You can select & copy it manually.');
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr)) return alert('Provide JSON array');
+      signals = arr.concat(signals).slice(0, MAX_HISTORY);
+      saveLocal(); render();
+      alert('Imported signals');
+    } catch(e){ alert('Invalid JSON'); }
+  });
+
+  copyJson.addEventListener('click', async ()=>{
+    const txt = JSON.stringify(signals, null, 2);
+    try {
+      await navigator.clipboard.writeText(txt);
+      alert('JSON copied to clipboard. Paste into index.html initial-data block on GitHub and commit.');
+    } catch(e){
+      importArea.value = txt; alert('Copied to textarea — copy manually');
     }
   });
 
-  // pause/kill/min conf
-  pauseBtn.addEventListener('click', () => {
-    paused = !paused;
-    pauseBtn.textContent = paused ? 'Resume' : 'Pause';
-    pauseBtn.classList.toggle('opacity-60', paused);
-  });
-  killBtn.addEventListener('click', () => {
-    killed = !killed;
-    killBtn.textContent = killed ? 'Killed (off)' : 'Kill';
-    statusBadge.textContent = killed ? 'Killed' : 'Manual';
-    statusBadge.classList.toggle('bg-red-100', killed);
-    statusBadge.classList.toggle('text-red-800', killed);
+  clearAll.addEventListener('click', ()=>{
+    if (adminPass.value.trim() !== ADMIN_PASS){ alert('Wrong passphrase'); return; }
+    if (!confirm('Clear all signals?')) return;
+    signals = [];
+    saveLocal(); render();
   });
 
-  minConf.addEventListener('input', () => {
-    minConfVal.textContent = minConf.value + '%';
-    minConfValNum = Number(minConf.value)/100;
-    refreshAll();
+  // simulate ticks
+  simulateTickBtn.addEventListener('click', ()=>{
+    const last = ticks.length ? ticks[0].price : (Math.random()*10000 + 1000);
+    // random small move
+    const delta = (Math.random()-0.5)*(Math.random()*10);
+    const next = Math.max(1, Number((last + delta).toFixed(2)));
+    pushTick(next);
+  });
+  clearTicksBtn.addEventListener('click', ()=> clearTicks());
+
+  // quick demo post
+  newDemo.addEventListener('click', ()=>{
+    const s = {
+      id: 'sig_' + Date.now(),
+      ts: Date.now(),
+      market: marketSel.value,
+      type: 'over_under',
+      direction: Math.random()>0.5 ? 'over' : 'under',
+      price: ticks.length? ticks[0].price : null,
+      confidence: 0.65 + Math.random()*0.3,
+      expiry_seconds: 60
+    };
+    postSignalNow(s);
+  });
+
+  // Pause / Kill
+  pauseBtn.addEventListener('click', ()=>{
+    paused = !paused;
+    pauseBtn.textContent = paused ? 'Resume' : 'Pause';
+    feedStatus.textContent = paused ? 'Paused' : 'Running';
+    render();
+  });
+  killBtn.addEventListener('click', ()=>{
+    killed = !killed;
+    killBtn.textContent = killed ? 'Revive' : 'Kill';
+    feedStatus.textContent = killed ? 'Killed' : 'Running';
+    render();
+  });
+
+  // mark win/loss for top signal
+  markWin.addEventListener('click', ()=>{
+    if (!signals.length) return alert('No signals');
+    signals[0].result = 'win';
+    saveLocal(); render();
+  });
+  markLoss.addEventListener('click', ()=>{
+    if (!signals.length) return alert('No signals');
+    signals[0].result = 'loss';
+    saveLocal(); render();
+  });
+
+  // min conf change
+  minConf.addEventListener('input', ()=> {
+    minConfVal = Number(minConf.value)/100;
+    render();
   });
 
   // init
   loadInitial();
-  refreshAll();
+  render();
+  renderTicks();
+  computeVol();
 
-  // expose for debugging
-  window.manualSignals = {
-    get: () => signals,
-    set: arr => { signals = arr; saveLocal(); refreshAll(); }
+  // expose helpers
+  window.signalBot = {
+    getSignals: ()=> signals,
+    setSignals: (arr)=>{ signals = arr; saveLocal(); render(); }
   };
+
 })();
 </script>
 </body>
