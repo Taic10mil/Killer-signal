@@ -1,0 +1,96 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Live Signals</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <style>.signal-badge{padding:.25rem .5rem;border-radius:.375rem}</style>
+</head>
+<body class="bg-gray-100 text-gray-900">
+<div class="max-w-4xl mx-auto p-4">
+  <header class="flex items-center justify-between mb-4">
+    <div><h1 class="text-2xl font-bold">Live Signal Board</h1><p class="text-sm text-gray-600">Automatic signals (Deriv)</p></div>
+    <div id="conn" class="text-sm text-yellow-600">Connecting...</div>
+  </header>
+
+  <main class="bg-white rounded-lg shadow p-4">
+    <div class="flex justify-between items-center mb-4">
+      <div>
+        <h2 class="text-lg font-semibold">Live Signal</h2>
+        <div id="liveSmall" class="text-sm text-gray-600">Waiting...</div>
+      </div>
+      <div id="liveCard" class="hidden p-3 rounded border bg-gray-50 text-right">
+        <div id="sigType" class="text-xs text-gray-600">TYPE</div>
+        <div id="sigMain" class="text-2xl font-bold mt-1">—</div>
+        <div id="sigMeta" class="text-sm text-gray-600 mt-1">—</div>
+      </div>
+    </div>
+
+    <div>
+      <h3 class="font-medium">Recent Signals</h3>
+      <ul id="history" class="mt-2 space-y-2 max-h-64 overflow-auto"></ul>
+    </div>
+  </main>
+</div>
+
+<script>
+  // If server serves this file, leave SERVER_URL empty to connect back to origin:
+  const SERVER_URL = ''; // if empty => will use same host; otherwise e.g. 'https://your-repl.repl.co'
+  const socket = SERVER_URL ? io(SERVER_URL) : io();
+
+  const connEl = document.getElementById('conn');
+  const liveCard = document.getElementById('liveCard');
+  const liveSmall = document.getElementById('liveSmall');
+  const sigType = document.getElementById('sigType');
+  const sigMain = document.getElementById('sigMain');
+  const sigMeta = document.getElementById('sigMeta');
+  const historyEl = document.getElementById('history');
+
+  let history = [];
+
+  socket.on('connect', ()=> {
+    connEl.textContent = 'Connected';
+    connEl.className = 'text-sm text-green-600';
+  });
+  socket.on('disconnect', ()=> {
+    connEl.textContent = 'Disconnected';
+    connEl.className = 'text-sm text-red-600';
+  });
+  socket.on('hello', d => console.log('hello', d));
+  socket.on('tick', t => {
+    // optional: show last price somewhere if needed
+    // console.log('tick', t);
+  });
+  socket.on('signal', s => {
+    console.log('signal', s);
+    history.unshift(s);
+    if (history.length > 100) history.pop();
+    render();
+  });
+
+  function render() {
+    if (!history.length) {
+      liveSmall.textContent = 'No signal yet';
+      liveCard.classList.add('hidden');
+    } else {
+      const top = history[0];
+      liveSmall.textContent = `${top.type} • ${top.direction}`;
+      sigType.textContent = top.type.toUpperCase();
+      sigMain.textContent = top.direction.toUpperCase();
+      sigMeta.textContent = `Price: ${top.price} • ${Math.round((top.confidence||0)*100)}% • exp ${top.expiry_seconds}s`;
+      liveCard.classList.remove('hidden');
+    }
+
+    historyEl.innerHTML = '';
+    for (const s of history.slice(0,50)) {
+      const li = document.createElement('li');
+      li.className = 'flex items-center justify-between p-2 bg-gray-50 rounded';
+      li.innerHTML = `<div class="text-sm"><strong>${s.type.toUpperCase()}</strong> • ${s.direction.toUpperCase()}<div class="text-xs text-gray-600">${new Date(s.ts).toLocaleTimeString()}</div></div><div class="text-sm font-medium">${Math.round((s.confidence||0)*100)}%</div>`;
+      historyEl.appendChild(li);
+    }
+  }
+</script>
+</body>
+</html>
