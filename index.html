@@ -3,499 +3,228 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Signal Bot — Dark Dashboard</title>
+<title>Deriv Signals — Live 1-Tick</title>
 <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-<script>/* small inline reset for dark */</script>
 <style>
-  :root{--bg:#0b1220;--card:#0f1724;--muted:#94a3b8;--accent:#10b981;--danger:#ef4444;--glass: rgba(255,255,255,0.03)}
-  body{background:linear-gradient(180deg,#06070a 0%,var(--bg) 100%);color:#e6eef8;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial}
-  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.03); box-shadow: 0 6px 18px rgba(2,6,23,0.6)}
+  :root{--bg:#071128;--card:#0f1724;--muted:#94a3b8;--accent:#10b981;--danger:#ef4444}
+  body{background:linear-gradient(180deg,#030412 0%,var(--bg) 100%);color:#e6eef8;font-family:Inter,system-ui,Arial}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); border:1px solid rgba(255,255,255,0.03)}
   .muted{color:var(--muted)}
-  .small{font-size:12px}
-  .pill{padding:6px 10px;border-radius:999px;background:var(--glass);font-weight:600}
-  .green{color:var(--accent)}
-  .red{color:var(--danger)}
-  pre{white-space:pre-wrap;word-break:break-word}
-  @media (max-width:720px){.grid-3{grid-template-columns:1fr}}
+  .pill{padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.02)}
 </style>
 </head>
 <body>
-<div class="max-w-5xl mx-auto p-4">
-  <header class="flex items-start justify-between mb-4">
-    <div>
-      <h1 class="text-2xl font-bold">Signal Bot — Dashboard</h1>
-      <div class="muted small">Dark bot UI • Over/Under • Even/Odd • Matches</div>
-    </div>
-    <div class="flex items-center space-x-2">
-      <div id="status" class="pill small muted">Manual</div>
-      <button id="openAdmin" class="px-3 py-2 bg-blue-600 rounded shadow">Admin</button>
-    </div>
-  </header>
-
-  <main class="grid grid-cols-3 gap-4 grid-3">
-    <!-- Left: Live & Ticks -->
-    <section class="col-span-2">
-      <div class="card rounded-lg p-4 mb-4">
-        <div class="flex items-center justify-between mb-3">
-          <div>
-            <div class="small muted">Market</div>
-            <div class="flex items-center space-x-2 mt-1">
-              <select id="marketSel" class="p-2 rounded bg-transparent border border-white/5">
-                <option>R_100</option>
-                <option>R_25</option>
-                <option>R_10</option>
-                <option>R_50</option>
-                <option>XAUUSD</option>
-              </select>
-              <div id="volatility" class="pill small muted">Volatility: —</div>
-              <div id="tickCount" class="pill small muted">Ticks: 0</div>
-            </div>
-          </div>
-          <div class="text-right">
-            <div class="small muted">Last price</div>
-            <div id="lastPrice" class="text-xl font-semibold">—</div>
-            <div class="muted small">Updated live</div>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-3 gap-3">
-          <!-- Ticks -->
-          <div class="col-span-2">
-            <div class="small muted mb-2">Recent ticks</div>
-            <div id="ticks" class="bg-black/20 rounded p-2 max-h-36 overflow-auto"></div>
-            <div class="flex items-center space-x-2 mt-2">
-              <button id="simulateTick" class="px-3 py-1 bg-green-600 rounded small">Simulate tick</button>
-              <button id="clearTicks" class="px-3 py-1 bg-red-600 rounded small">Clear ticks</button>
-              <div class="muted small">• You can paste real ticks in Admin</div>
-            </div>
-          </div>
-
-          <!-- Prediction Card -->
-          <div class="card rounded p-3">
-            <div class="small muted">Live Prediction</div>
-            <div id="liveSigType" class="text-xs muted mt-1">—</div>
-            <div id="liveSigMain" class="text-3xl font-extrabold mt-2">—</div>
-            <div id="liveMeta" class="muted small mt-2">Confidence: — • Expires: —s</div>
-            <div class="mt-3 flex space-x-2">
-              <button id="markWin" class="flex-1 px-2 py-1 bg-blue-600 rounded small">Mark Win</button>
-              <button id="markLoss" class="flex-1 px-2 py-1 bg-gray-700 rounded small">Mark Loss</button>
-            </div>
-          </div>
-        </div>
+  <div class="max-w-4xl mx-auto p-4">
+    <header class="flex items-center justify-between mb-4">
+      <div>
+        <h1 class="text-2xl font-bold">Deriv • Live 1-Tick Signals</h1>
+        <div class="muted small">Dark UI — Over/Under + Even/Odd • 1-tick predictions</div>
       </div>
-
-      <!-- History / Stats -->
-      <div class="card rounded p-4">
-        <div class="flex items-center justify-between mb-3">
-          <div>
-            <h3 class="font-semibold">Signals History</h3>
-            <div class="muted small">Recent posted signals and results</div>
-          </div>
-          <div class="text-right small muted">
-            <div>Win rate: <span id="winRate">—</span></div>
-            <div>Total: <span id="totalCount">0</span></div>
-          </div>
-        </div>
-        <ul id="history" class="space-y-2 max-h-56 overflow-auto"></ul>
-      </div>
-    </section>
-
-    <!-- Right: controls / quick -->
-    <aside>
-      <div class="card rounded p-4 mb-4">
-        <div class="small muted">Quick Controls</div>
-        <div class="mt-3 space-y-2">
-          <button id="pauseBtn" class="w-full px-3 py-2 bg-yellow-600 rounded">Pause</button>
-          <button id="killBtn" class="w-full px-3 py-2 bg-red-600 rounded">Kill</button>
-          <button id="newDemo" class="w-full px-3 py-2 bg-indigo-600 rounded">Post demo signal</button>
-        </div>
-      </div>
-
-      <div class="card rounded p-4">
-        <div class="small muted">Filters</div>
-        <label class="block mt-2 small muted">Min confidence</label>
-        <input id="minConf" type="range" min="0" max="100" value="0" class="w-full" />
-        <div class="mt-3 small muted">Status</div>
-        <div id="feedStatus" class="mt-1 pill small muted">Running</div>
-      </div>
-    </aside>
-  </main>
-</div>
-
-<!-- Admin modal -->
-<div id="adminModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center p-4">
-  <div class="bg-[#071025] rounded-lg w-full max-w-2xl p-4 card">
-    <div class="flex items-center justify-between mb-3">
-      <h3 class="text-lg font-semibold">Admin — Post / Import</h3>
       <div class="flex items-center space-x-2">
+        <div id="status" class="pill muted">Connecting...</div>
+        <button id="adminBtn" class="px-3 py-1 bg-blue-600 rounded">Admin</button>
+      </div>
+    </header>
+
+    <main class="grid grid-cols-3 gap-4">
+      <section class="col-span-2">
+        <div class="card rounded p-4 mb-4">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <div class="muted small">Market</div>
+              <select id="marketSel" class="p-2 rounded bg-transparent border border-white/5">
+                <option>R_100</option><option>R_25</option><option>R_10</option><option>R_50</option>
+              </select>
+            </div>
+            <div class="text-right">
+              <div class="muted small">Last price</div>
+              <div id="lastPrice" class="text-xl font-semibold">—</div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div class="col-span-2">
+              <div class="muted small mb-2">Recent ticks</div>
+              <div id="ticks" class="bg-black/20 rounded p-2 max-h-48 overflow-auto"></div>
+            </div>
+
+            <div class="card rounded p-3">
+              <div class="muted small">Live Prediction</div>
+              <div id="predType" class="text-xs muted mt-1">1-TICK</div>
+              <div id="predMain" class="text-3xl font-extrabold mt-2">—</div>
+              <div id="predMeta" class="muted small mt-2">Confidence: —</div>
+              <div class="mt-3">
+                <button id="markWin" class="w-full px-2 py-1 bg-green-600 rounded">Mark Win</button>
+                <button id="markLoss" class="w-full px-2 py-1 bg-red-600 rounded mt-2">Mark Loss</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card rounded p-4">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-semibold">Signals History</h3>
+            <div class="muted small">Total: <span id="total">0</span></div>
+          </div>
+          <ul id="history" class="space-y-2 max-h-60 overflow-auto"></ul>
+        </div>
+      </section>
+
+      <aside>
+        <div class="card rounded p-4 mb-4">
+          <div class="muted small">Controls</div>
+          <div class="mt-3 space-y-2">
+            <button id="pauseBtn" class="w-full px-3 py-2 bg-yellow-600 rounded">Pause</button>
+            <button id="clearHistory" class="w-full px-3 py-2 bg-red-600 rounded">Clear History</button>
+            <button id="copyJson" class="w-full px-3 py-2 bg-indigo-600 rounded">Copy JSON</button>
+          </div>
+        </div>
+
+        <div class="card rounded p-4">
+          <div class="muted small">Filters</div>
+          <label class="block mt-2 small muted">Min confidence</label>
+          <input id="minConf" type="range" min="0" max="100" value="0" class="w-full" />
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- admin modal (simple) -->
+  <div id="adminModal" class="fixed inset-0 bg-black bg-opacity-60 hidden items-center justify-center p-4">
+    <div class="bg-[#071025] rounded-lg w-full max-w-xl p-4 card">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-lg font-semibold">Admin • Simulate / Settings</h3>
         <button id="closeAdmin" class="px-2 py-1 bg-gray-700 rounded">Close</button>
       </div>
-    </div>
-
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-      <div>
-        <label class="small muted">Passphrase</label>
-        <input id="adminPass" class="w-full p-2 rounded bg-transparent border border-white/5" placeholder="passphrase" />
-      </div>
-
-      <div>
-        <label class="small muted">Market</label>
-        <select id="adminMarket" class="w-full p-2 rounded bg-transparent border border-white/5">
-          <option>R_100</option><option>R_25</option><option>R_10</option><option>R_50</option><option>XAUUSD</option>
-        </select>
-      </div>
-
-      <div>
-        <label class="small muted">Type</label>
-        <input id="adminType" class="w-full p-2 rounded bg-transparent border border-white/5" placeholder="over_under | even_odd | matches" />
-      </div>
-
-      <div>
-        <label class="small muted">Direction</label>
-        <input id="adminDir" class="w-full p-2 rounded bg-transparent border border-white/5" placeholder="over | under | even | odd | teamA" />
-      </div>
-
-      <div>
-        <label class="small muted">Price (opt)</label>
-        <input id="adminPrice" class="w-full p-2 rounded bg-transparent border border-white/5" placeholder="e.g. 12345.67" />
-      </div>
-
-      <div>
-        <label class="small muted">Confidence (0..1)</label>
-        <input id="adminConf" class="w-full p-2 rounded bg-transparent border border-white/5" value="0.7" />
-      </div>
-
-      <div>
-        <label class="small muted">Expiry seconds</label>
-        <input id="adminExpiry" class="w-full p-2 rounded bg-transparent border border-white/5" value="60" />
-      </div>
-
-      <div>
-        <label class="small muted">Note</label>
-        <input id="adminNote" class="w-full p-2 rounded bg-transparent border border-white/5" placeholder="optional note" />
-      </div>
-
-      <div class="md:col-span-2">
-        <button id="postSignal" class="w-full px-3 py-2 bg-green-600 rounded">Post Signal (temp)</button>
-      </div>
-
-      <div class="md:col-span-2">
-        <label class="small muted">Paste signals JSON (array) to import</label>
-        <textarea id="importArea" rows="6" class="w-full p-2 rounded bg-transparent border border-white/5 font-mono small" placeholder='[{"id":"sig_1",...}]'></textarea>
-        <div class="flex items-center space-x-2 mt-2">
-          <button id="importBtn" class="px-3 py-1 bg-indigo-600 rounded small">Import</button>
-          <button id="copyJson" class="px-3 py-1 bg-gray-700 rounded small">Copy JSON to Save</button>
-          <button id="clearAll" class="px-3 py-1 bg-red-600 rounded small">Clear All</button>
+      <div class="grid grid-cols-1 gap-3">
+        <div>
+          <label class="muted small">Simulate tick price</label>
+          <input id="simPrice" class="w-full p-2 rounded bg-transparent border border-white/5" placeholder="e.g. 12345.67" />
+          <button id="simBtn" class="mt-2 w-full px-3 py-2 bg-green-600 rounded">Simulate</button>
         </div>
-        <div class="muted small mt-2">To persist for everyone: copy JSON and paste into the <code>&lt;script id="initial-data"&gt;</code> block in this file on GitHub then commit.</div>
+        <div>
+          <label class="muted small">Set SYMBOL env (server must be redeployed)</label>
+          <input id="setSym" class="w-full p-2 rounded bg-transparent border border-white/5" placeholder="R_100" />
+          <div class="muted small mt-1">(Change server SYMBOL on host if needed)</div>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
-<!-- Embedded initial data (safe parse) -->
-<script id="initial-data" type="application/json">
-[
-  {
-    "id":"sig_example_1",
-    "ts": 0,
-    "market":"R_100",
-    "type":"over_under",
-    "direction":"over",
-    "price": null,
-    "expiry_seconds":60,
-    "confidence":0.75,
-    "note":"Example signal — edit this JSON in repo to persist."
-  }
-]
-</script>
-
+<script src="/socket.io/socket.io.js"></script>
 <script>
 (function(){
-  // simple passphrase — change in file on GitHub to secure
-  const ADMIN_PASS = 'changeme';
-
-  // DOM refs
-  const openAdmin = document.getElementById('openAdmin');
-  const adminModal = document.getElementById('adminModal');
-  const closeAdmin = document.getElementById('closeAdmin');
-  const postSignal = document.getElementById('postSignal');
-  const copyJson = document.getElementById('copyJson');
-  const importBtn = document.getElementById('importBtn');
-  const clearAll = document.getElementById('clearAll');
-
-  const adminPass = document.getElementById('adminPass');
-  const adminMarket = document.getElementById('adminMarket');
-  const adminType = document.getElementById('adminType');
-  const adminDir = document.getElementById('adminDir');
-  const adminPrice = document.getElementById('adminPrice');
-  const adminConf = document.getElementById('adminConf');
-  const adminExpiry = document.getElementById('adminExpiry');
-  const adminNote = document.getElementById('adminNote');
-  const importArea = document.getElementById('importArea');
-
-  const marketSel = document.getElementById('marketSel');
-  const volatilityEl = document.getElementById('volatility');
-  const tickCountEl = document.getElementById('tickCount');
+  const socket = io(); // same origin
+  const status = document.getElementById('status');
   const ticksEl = document.getElementById('ticks');
-  const lastPriceEl = document.getElementById('lastPrice');
-
-  const liveSigType = document.getElementById('liveSigType');
-  const liveSigMain = document.getElementById('liveSigMain');
-  const liveMeta = document.getElementById('liveMeta');
-
+  const lastPrice = document.getElementById('lastPrice');
+  const predMain = document.getElementById('predMain');
+  const predMeta = document.getElementById('predMeta');
+  const predType = document.getElementById('predType');
   const historyEl = document.getElementById('history');
-  const winRateEl = document.getElementById('winRate');
-  const totalCountEl = document.getElementById('totalCount');
+  const totalEl = document.getElementById('total');
+  const minConfEl = document.getElementById('minConf');
 
-  const simulateTickBtn = document.getElementById('simulateTick');
-  const clearTicksBtn = document.getElementById('clearTicks');
-
-  const pauseBtn = document.getElementById('pauseBtn');
-  const killBtn = document.getElementById('killBtn');
-  const newDemo = document.getElementById('newDemo');
-  const minConf = document.getElementById('minConf');
-  const feedStatus = document.getElementById('feedStatus');
-
-  const markWin = document.getElementById('markWin');
-  const markLoss = document.getElementById('markLoss');
-
-  // state
   let signals = [];
-  let ticks = []; // {ts, price}
-  let paused = false;
-  let killed = false;
-  let minConfVal = Number(minConf.value)/100;
-  const MAX_HISTORY = 200;
 
-  // safe load initial data
-  function loadInitial(){
-    try {
-      const local = localStorage.getItem('signals_v2');
-      if (local) { signals = JSON.parse(local); return; }
-    } catch(e){}
-    try {
-      const raw = document.getElementById('initial-data').textContent.trim();
-      const parsed = JSON.parse(raw || '[]');
-      if (Array.isArray(parsed)) signals = parsed;
-    } catch(e){ signals = []; }
-  }
+  socket.on('connect', ()=> {
+    status.textContent = 'Live';
+    status.className = 'pill';
+  });
+  socket.on('disconnect', ()=> {
+    status.textContent = 'Disconnected';
+    status.className = 'pill muted';
+  });
 
-  function saveLocal(){ try { localStorage.setItem('signals_v2', JSON.stringify(signals)); } catch(e){} }
+  socket.on('tick', t => {
+    // t: {ts, price, symbol}
+    const div = document.createElement('div');
+    div.className = 'flex items-center justify-between py-1 px-2';
+    div.innerHTML = `<div class="small muted">${new Date(t.ts).toLocaleTimeString()}</div><div>${t.price}</div>`;
+    ticksEl.prepend(div);
+    while (ticksEl.children.length > 50) ticksEl.removeChild(ticksEl.lastChild);
+    lastPrice.textContent = t.price;
+  });
 
-  // ticks helpers
-  function pushTick(price){
-    const t = { ts: Date.now(), price: Number(price) };
-    ticks.unshift(t);
-    if (ticks.length > 100) ticks.pop();
-    renderTicks();
-    computeVol();
-  }
-  function clearTicks(){ ticks = []; renderTicks(); computeVol(); }
-
-  function renderTicks(){
-    ticksEl.innerHTML = '';
-    for (const t of ticks.slice(0,50)){
-      const div = document.createElement('div');
-      div.className = 'flex items-center justify-between py-1 px-2';
-      div.innerHTML = `<div class="small muted">${new Date(t.ts).toLocaleTimeString()}</div><div>${t.price}</div>`;
-      ticksEl.appendChild(div);
+  socket.on('signal', s => {
+    // s.predictions.over_under.direction/confidence
+    const ou = s.predictions.over_under;
+    const eo = s.predictions.even_odd;
+    if (ou && (ou.confidence*100) >= Number(minConfEl.value)) {
+      predType.textContent = '1-TICK';
+      predMain.textContent = ou.direction.toUpperCase();
+      predMeta.textContent = `Conf: ${Math.round(ou.confidence*100)}% • Price: ${s.price}`;
     }
-    tickCountEl.textContent = 'Ticks: ' + ticks.length;
-    lastPriceEl.textContent = ticks.length ? ticks[0].price : '—';
-  }
+    // add to history
+    signals.unshift(s);
+    if (signals.length > 200) signals.pop();
+    renderHistory();
+  });
 
-  function computeVol(){
-    if (ticks.length < 2){ volatilityEl.textContent = 'Volatility: —'; return; }
-    const arr = ticks.map(t=>t.price).slice(0,30);
-    const n = arr.length;
-    const mean = arr.reduce((a,b)=>a+b,0)/n;
-    const variance = arr.reduce((a,b)=>a+(b-mean)*(b-mean),0)/n;
-    const sd = Math.sqrt(variance);
-    volatilityEl.textContent = 'Volatility: ' + sd.toFixed(4);
-  }
-
-  // render signals
-  function render(){
-    // live
-    if (signals.length && !paused && !killed){
-      const top = signals[0];
-      const conf100 = Math.round((top.confidence||0)*100);
-      if (conf100 >= (minConfVal*100)){
-        liveSigType.textContent = (top.type||'').toUpperCase();
-        liveSigMain.textContent = (top.direction||'').toUpperCase();
-        liveMeta.textContent = `Market: ${top.market || '—'} • ${conf100}% • exp ${top.expiry_seconds || 0}s`;
-      } else {
-        liveSigType.textContent = '—';
-        liveSigMain.textContent = '—';
-        liveMeta.textContent = 'Waiting for high-confidence';
-      }
-    } else {
-      liveSigType.textContent = '—';
-      liveSigMain.textContent = '—';
-      liveMeta.textContent = 'No active signal';
-    }
-
-    // history
+  function renderHistory(){
     historyEl.innerHTML = '';
-    for (const s of signals.slice(0,MAX_HISTORY)){
+    for (const s of signals.slice(0,200)){
       const li = document.createElement('li');
       li.className = 'flex items-center justify-between p-2 bg-black/20 rounded';
-      const left = document.createElement('div');
-      left.innerHTML = `<div class="text-sm font-semibold">${s.type.toUpperCase()} • ${s.direction.toUpperCase()}</div>
-        <div class="small muted">${s.market||'—'} • ${new Date(s.ts).toLocaleString()} ${s.note? ' • ' + s.note : ''}</div>`;
-      const right = document.createElement('div');
-      right.className = 'flex items-center space-x-2';
-      const conf = document.createElement('div'); conf.className='small muted'; conf.textContent = Math.round((s.confidence||0)*100)+'%';
-      const res = document.createElement('div'); res.className = 'small';
-      if (s.result === 'win') res.innerHTML = '<span class="green">WIN</span>';
-      else if (s.result === 'loss') res.innerHTML = '<span class="red">LOSS</span>';
-      else res.textContent = '—';
-      right.appendChild(conf); right.appendChild(res);
-      li.appendChild(left); li.appendChild(right);
+      li.innerHTML = `<div><div class="text-sm font-semibold">${s.type} • ${s.predictions.over_under.direction.toUpperCase()}</div>
+        <div class="muted small">${new Date(s.ts).toLocaleTimeString()}</div></div>
+        <div class="muted small">${Math.round(s.predictions.over_under.confidence*100)}%</div>`;
       historyEl.appendChild(li);
     }
-
-    // stats
-    totalCountEl.textContent = signals.length;
-    const completed = signals.filter(s => s.result === 'win' || s.result === 'loss');
-    const wins = completed.filter(s => s.result === 'win').length;
-    const winRate = completed.length ? Math.round((wins/completed.length)*100) + '%' : '—';
-    winRateEl.textContent = winRate;
+    totalEl.textContent = signals.length;
   }
 
-  // post a signal
-  function postSignalNow(obj){
-    signals.unshift(obj);
-    if (signals.length > MAX_HISTORY) signals.pop();
-    saveLocal();
-    render();
-    alert('Signal posted locally. To persist globally, use Copy JSON to Save and paste into file on GitHub.');
-  }
+  // admin UI
+  const adminBtn = document.getElementById('adminBtn');
+  const adminModal = document.getElementById('adminModal');
+  const closeAdmin = document.getElementById('closeAdmin');
+  const simBtn = document.getElementById('simBtn');
+  const simPrice = document.getElementById('simPrice');
 
-  // admin handlers
-  openAdmin.addEventListener('click', ()=>{
-    adminModal.classList.remove('hidden');
-    adminPass.value = '';
-  });
+  adminBtn.addEventListener('click', ()=> adminModal.classList.remove('hidden'));
   closeAdmin.addEventListener('click', ()=> adminModal.classList.add('hidden'));
 
-  postSignal.addEventListener('click', ()=>{
-    if (adminPass.value.trim() !== ADMIN_PASS){ alert('Wrong passphrase'); return; }
-    const s = {
-      id: 'sig_' + Date.now(),
+  simBtn.addEventListener('click', ()=>{
+    const v = Number(simPrice.value);
+    if (!v) return alert('Enter number');
+    // post local fake tick to UI and treat it as if server sent it
+    const fake = { ts: Date.now(), price: v, symbol: document.getElementById('marketSel').value };
+    // render tick locally
+    const div = document.createElement('div');
+    div.className = 'flex items-center justify-between py-1 px-2';
+    div.innerHTML = `<div class="small muted">${new Date(fake.ts).toLocaleTimeString()}</div><div>${fake.price}</div>`;
+    ticksEl.prepend(div);
+    lastPrice.textContent = fake.price;
+    // basic local prediction mimic (momentum light)
+    const direction = Math.random()>0.5 ? 'OVER' : 'UNDER';
+    predMain.textContent = direction;
+    predMeta.textContent = `Simulated • Price: ${fake.price}`;
+    // also add to local history
+    const mock = {
       ts: Date.now(),
-      market: adminMarket.value || marketSel.value,
-      type: (adminType.value || 'over_under'),
-      direction: (adminDir.value || 'over'),
-      price: adminPrice.value ? Number(adminPrice.value) : null,
-      confidence: Math.max(0, Math.min(1, Number(adminConf.value) || 0)),
-      expiry_seconds: Number(adminExpiry.value) || 60,
-      note: adminNote.value || ''
+      type: 'sim',
+      predictions: { over_under: { direction: direction.toLowerCase(), confidence: 0.6 } },
+      price: fake.price
     };
-    postSignalNow(s);
-    // update admin textarea
-    importArea.value = JSON.stringify(signals, null, 2);
+    signals.unshift(mock);
+    renderHistory();
+    alert('Simulated tick added locally.');
   });
 
-  importBtn.addEventListener('click', ()=>{
-    if (adminPass.value.trim() !== ADMIN_PASS){ alert('Wrong passphrase'); return; }
-    const raw = importArea.value.trim();
-    if (!raw) return alert('Paste JSON array');
-    try {
-      const arr = JSON.parse(raw);
-      if (!Array.isArray(arr)) return alert('Provide JSON array');
-      signals = arr.concat(signals).slice(0, MAX_HISTORY);
-      saveLocal(); render();
-      alert('Imported signals');
-    } catch(e){ alert('Invalid JSON'); }
+  // controls
+  document.getElementById('pauseBtn').addEventListener('click', ()=>{
+    const el = document.getElementById('pauseBtn');
+    if (el.textContent === 'Pause') { el.textContent='Resume'; socket.disconnect(); } else { el.textContent='Pause'; socket.connect(); }
   });
-
-  copyJson.addEventListener('click', async ()=>{
-    const txt = JSON.stringify(signals, null, 2);
+  document.getElementById('clearHistory').addEventListener('click', ()=> { if (confirm('Clear history?')) { signals=[]; renderHistory(); }});
+  document.getElementById('copyJson').addEventListener('click', async ()=> {
     try {
-      await navigator.clipboard.writeText(txt);
-      alert('JSON copied to clipboard. Paste into index.html initial-data block on GitHub and commit.');
+      await navigator.clipboard.writeText(JSON.stringify(signals, null, 2));
+      alert('JSON copied to clipboard.');
     } catch(e){
-      importArea.value = txt; alert('Copied to textarea — copy manually');
+      alert('Could not copy. Check permissions.');
     }
   });
-
-  clearAll.addEventListener('click', ()=>{
-    if (adminPass.value.trim() !== ADMIN_PASS){ alert('Wrong passphrase'); return; }
-    if (!confirm('Clear all signals?')) return;
-    signals = [];
-    saveLocal(); render();
-  });
-
-  // simulate ticks
-  simulateTickBtn.addEventListener('click', ()=>{
-    const last = ticks.length ? ticks[0].price : (Math.random()*10000 + 1000);
-    // random small move
-    const delta = (Math.random()-0.5)*(Math.random()*10);
-    const next = Math.max(1, Number((last + delta).toFixed(2)));
-    pushTick(next);
-  });
-  clearTicksBtn.addEventListener('click', ()=> clearTicks());
-
-  // quick demo post
-  newDemo.addEventListener('click', ()=>{
-    const s = {
-      id: 'sig_' + Date.now(),
-      ts: Date.now(),
-      market: marketSel.value,
-      type: 'over_under',
-      direction: Math.random()>0.5 ? 'over' : 'under',
-      price: ticks.length? ticks[0].price : null,
-      confidence: 0.65 + Math.random()*0.3,
-      expiry_seconds: 60
-    };
-    postSignalNow(s);
-  });
-
-  // Pause / Kill
-  pauseBtn.addEventListener('click', ()=>{
-    paused = !paused;
-    pauseBtn.textContent = paused ? 'Resume' : 'Pause';
-    feedStatus.textContent = paused ? 'Paused' : 'Running';
-    render();
-  });
-  killBtn.addEventListener('click', ()=>{
-    killed = !killed;
-    killBtn.textContent = killed ? 'Revive' : 'Kill';
-    feedStatus.textContent = killed ? 'Killed' : 'Running';
-    render();
-  });
-
-  // mark win/loss for top signal
-  markWin.addEventListener('click', ()=>{
-    if (!signals.length) return alert('No signals');
-    signals[0].result = 'win';
-    saveLocal(); render();
-  });
-  markLoss.addEventListener('click', ()=>{
-    if (!signals.length) return alert('No signals');
-    signals[0].result = 'loss';
-    saveLocal(); render();
-  });
-
-  // min conf change
-  minConf.addEventListener('input', ()=> {
-    minConfVal = Number(minConf.value)/100;
-    render();
-  });
-
-  // init
-  loadInitial();
-  render();
-  renderTicks();
-  computeVol();
-
-  // expose helpers
-  window.signalBot = {
-    getSignals: ()=> signals,
-    setSignals: (arr)=>{ signals = arr; saveLocal(); render(); }
-  };
 
 })();
 </script>
